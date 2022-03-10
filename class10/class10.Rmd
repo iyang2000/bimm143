@@ -1,0 +1,68 @@
+---
+title: "Class 10- Introduction to Genome Informatics Lab"
+author: 'Ivy (PID: A15442572)'
+date: "2/17/2022"
+output: pdf_document
+---
+
+# Examine 1000 Genome Data
+
+Q5: What proportion of the Mexican Ancestry in Los Angeles sample population (MXL) are 
+homozygous for the asthma associated SNP (G|G)?
+
+```{r}
+mxl <- read.csv("373531-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378.csv")
+table(mxl$Genotype..forward.strand.)/nrow(mxl)
+```
+
+```{r}
+gbr <- read.csv("373522-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378.csv")
+table(gbr$Genotype..forward.strand.)/nrow(gbr)
+```
+
+## Expression by Genotype Analysis
+
+I want to read my RNA-Seq Expression Results into R. This file is not a CSV but rather has fields separated by space.
+
+```{r}
+gnmtype <- read.table("rs8067378_ENSG00000172057.6.txt")
+head(gnmtype)
+```
+
+First try at this question. Is the mean expression different based on genotypes?
+
+```{r}
+gnmtype$geno == "G/G"
+```
+
+```{r}
+summary(gnmtype[gnmtype$geno == "G/G",]$exp)
+```
+
+Now check the other genotypes
+
+```{r}
+table(gnmtype$geno)
+```
+
+Summary of "A/G" and "A/A"
+
+```{r}
+summary(gnmtype[gnmtype$geno == "A/G",]$exp)
+summary(gnmtype[gnmtype$geno == "A/A",]$exp)
+```
+
+## Makw a summary overview figure
+
+Make a boxplot figure...
+
+```{r}
+library(ggplot2)
+
+ggplot(gnmtype) + aes(geno, exp, fill = geno) + geom_boxplot(notch = TRUE)
+```
+
+
+
+
+
