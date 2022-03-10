@@ -2,8 +2,8 @@
 Bioinformatics BIMM143 W22 at UC San Diego.
 
 ## Content
--Class 05: Data Visualizations
--Class 06: R Graphics
+-Class 05: [Data Visualizations](https://github.com/iyang2000/bimm143/tree/main/class05)
+-Class 06: [R Graphics] (https://github.com/iyang2000/bimm143/tree/main/class06)https://github.com/iyang2000/bimm143/tree/main/class06
 -Class 07:
 -Class 08:
 -Class 09:
