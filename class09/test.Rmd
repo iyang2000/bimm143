@@ -1,0 +1,16 @@
+---
+title: "test"
+author: 'Ivy (PID: A15442572)'
+date: "2/15/2022"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+![](hiv_image.png)
