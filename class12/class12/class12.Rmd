@@ -1,0 +1,226 @@
+---
+title: 'Class 12: RNA-Seq analysis mini-project'
+author: 'Ivy (PID: A15442572)'
+date: "2/23/2022"
+output: pdf_document
+---
+
+Here we will work on a complte differentual expression analysis project. We will run DESeq2 for this
+
+```{r setup, message=FALSE}
+
+library(DESeq2)
+library(ggplot2)
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+library(EnhancedVolcano)
+```
+
+## 1. Input the counts and metadata files.
+
+```{r input}
+countData <- read.csv("GSE37704_featurecounts.csv", row.names = 1)
+colData <- read.csv(("GSE37704_metadata.csv"))
+```
+
+Inspect these objects.
+```{r}
+colData
+```
+
+```{r}
+head(countData)
+```
+> Q. Complete the code below to remove the troublesome first column from countData
+
+```{r}
+countData <- countData[,-1]
+head(countData)
+```
+
+> Q. Check on correspondance of colData and countData
+
+```{r}
+all(colData$id == colnames(countData))
+```
+
+> Q. Filter countData to exclude genes (i.e. rows) where we have 0 read count across all samples (i.e. columns).
+
+```{r filter}
+counts <- countData[rowSums(countData) != 0,]
+head(counts)
+```
+
+# Run DESeq analysis
+
+The steps here are the first setup the object required by DESeq using the `DESeqDataSetFromMatrix()' fxn. This will store  the counts and metadata (i.e. colData) along with the design of the experiment (i.e. where in the metadata we have the description of what the columns of counts corresponds to).
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData=counts,
+                             colData=colData,
+                             design=~condition)
+dds <- DESeq(dds)
+```
+
+Now I can run my differential expression with `DESeq2`
+```{r deseq}
+dds <- DESeq(dds)
+```
+
+Now I get my results out of dds object
+```{r}
+res <-results(dds)
+res
+```
+## Add annotations
+
+>Q. Use the mapIDs() function multiple times to add SYMBOL, ENTREZID and GENENAME annotation to our results by completing the code below.
+
+```{r}
+columns(org.Hs.eg.db)
+```
+
+```{r}
+res$symbol = mapIds(org.Hs.eg.db,
+                    keys= row.names(res), 
+                    keytype="ENSEMBL",
+                    column= "SYMBOL",
+                    multiVals="first")
+
+res$entrez = mapIds(org.Hs.eg.db,
+                    keys=row.names(res),
+                    keytype="ENSEMBL",
+                    column="ENTREZID",
+                    multiVals="first")
+
+res$name =   mapIds(org.Hs.eg.db,
+                    keys=row.names(res),
+                    keytype="ENSEMBL",
+                    column= "GENENAME",
+                    multiVals="first")
+
+head(res)
+```
+
+# Volcano Plot
+
+Common summary figure that gives a nice overview of our results
+
+```{r}
+plot(res$log2FoldChange, -log(res$padj))
+```
+
+
+Try ggplot for this
+
+```{r ggplot}
+tmp <- as.data.frame(res)
+tmp$fc <- abs(res$log2FoldChange) >2
+
+ggplot(tmp) + 
+  aes(log2FoldChange, -log(padj), col=fc) +
+  geom_point()
+```
+
+Try the EnhancedVolcano package from bioconductor
+```{r}
+x <- as.data.frame(res)
+
+EnhancedVolcano(x,
+    lab = x$symbol,
+    x = 'log2FoldChange',
+    y = 'pvalue')
+```
+
+# Pathway analysis and gene set enrichment
+
+Here we try to bring back the biology and help with the interpretation of our results. We try to answer the question: which pathways and fxns feature heavily in our differentially expressed genes.
+
+Recall theat we need a "vector of importance" as input for GAGE that has ENTREZ ids set as the names attribute
+
+
+Install the package 
+  -BiocManager::install( c("pathview", "gage", "gageData") )
+
+Now let's load the packages.
+```{r}
+library(pathview)
+```
+```{r}
+library(gage)
+library(gageData)
+
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+# Focus on signaling and metabolic pathways only
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+
+# Examine the first 3 pathways
+head(kegg.sets.hs, 3)
+```
+
+```{r}
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez
+head(foldchanges)
+```
+
+```{r}
+keggres = gage(foldchanges, gsets=kegg.sets.hs)
+```
+
+Look at the first 2 downregulated (less) pathways
+```{r}
+head(keggres$less,2)
+```
+
+```{r}
+pathview(foldchanges, pathway.id = "hsa04110")
+```
+
+![](hsa04110.pathview.png)
+# Gene Ontology
+
+We can use a different gene set database (we used KEGG above) to provide different (but hopefully complementary) information. We will try GO here with a focus on Biological Pathways (BP) components of GO.
+
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+
+# Focus on Biological Process subset of GO
+gobpsets = go.sets.hs[go.subs.hs$BP]
+
+gobpres = gage(foldchanges, gsets=gobpsets, same.dir=TRUE)
+
+head(gobpres$less)
+```
+## Reactome
+
+We can use Reactome either as an R package (just like above) or we can use the website. The website needs a file of "gene importance" just like gage above.
+
+Reactome is database consisting of biological molecules and their relation to pathways and processes. Reactome, such as many other tools, has an online software available (https://reactome.org/) and R package available
+
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+
+write.table(sig_genes, file="significant_genes.txt", 
+            row.names=FALSE, col.names=FALSE, quote=FALSE)
+```
+
+
+
+# Save my results
+
+```{r}
+write.csv(res, file="deseq_results.csv")
+```
+
+
+
+
+
+
+
+
+

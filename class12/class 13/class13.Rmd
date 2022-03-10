@@ -1,0 +1,22 @@
+---
+title: "Blast Results Analysis"
+author: "Ivy Yang"
+date: "3/1/2022"
+output: pdf_document
+---
+
+Read the results TSV (Tab separated format) file from BLAST
+```{r}
+blast <- read.table("mm-second.x.zebrafish.tsv")
+head(blast)
+```
+
+```{r}
+colnames(blast) <- c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+
+```
+
+Plot some aspects
+```{r}
+plot(blast$pident, blast$bitscore)
+```
