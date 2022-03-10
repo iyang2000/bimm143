@@ -1,0 +1,250 @@
+---
+title: "Class 08 Mini Project"
+author: 'Ivy (PID: A15442572)'
+date: "2/10/2022"
+output: pdf_document
+---
+
+# Unsupervised Learning Analysis of Human Breast Cancer Cells
+
+Here we read data from the University of Wisconsin Medical Center breast cancer patients
+
+```{r}
+head(read.csv("WisconsinCancer.csv"))
+```
+
+
+```{r}
+# Download and import data then save input data file into Project directory
+
+# Store the input data as wisc.df
+```
+
+
+```{r}
+wisc.df <- read.csv("WisconsinCancer.csv", row.names=1)
+head(wisc.df)
+```
+
+# Create wisc.data to remove first column
+```{r}
+wisc.data <- wisc.df[,-1]
+head(wisc.data)
+```
+
+# Create diagnosis vector for later, store as vector
+```{r}
+diagnosis <- as.factor(wisc.df$diagnosis)
+diagnosis
+```
+
+
+>Q1. How many observations are in this dataset?
+
+How many rows(i.e. patients)?
+```{r}
+nrow(wisc.df)
+```
+How many columns (i.e. variables)?
+```{r}
+ncol(wisc.df)
+```
+
+>Q2. How many observations have a malignant diagnosis?
+
+```{r}
+sum(wisc.df$diagnosis == "M")
+```
+A useful fxn that we will use often
+```{r}
+table(wisc.df$diagnosis)
+```
+
+>Q3. How many variables/features in the data are suffixed with _mean?
+
+First I need to find matches
+```{r}
+(grep("_mean", colnames(wisc.df)))
+```
+How many are there is akin to asking for length()?
+```{r}
+length(grep("_mean", colnames(wisc.df)))
+```
+## Performing Principal Component Analysis
+
+# Check column means and standard deviations
+```{r}
+colMeans(wisc.data)
+
+apply(wisc.data, 2, sd)
+```
+
+# Perform PCA on wisc.data by completing the following code
+
+Here we need to scale the data before PCA as the various variables (i.e. columns) have very different scales.
+
+```{r}
+wisc.pr <- prcomp(wisc.data ,scale=TRUE)
+summary(wisc.pr)
+```
+
+Now I will make the mean result: the "PCA Plot" (AKA "score plot", PC1 vs PC2 plot)
+```{r}
+plot(wisc.pr$x[,1:2], col=diagnosis)
+```
+
+
+>Q4. From your results, what proportion of the original variance is captured by the first principal components (PC1)?
+
+44.27%
+
+>Q5. How many principal components (PCs) are required to describe at least 70% of the original variance in the data?
+
+3 principal components are required to describe at least 70%.
+
+>Q6. How many principal components (PCs) are required to describe at least 90% of the original variance in the data?
+
+7 principal components are required to describe at least 90%.
+
+
+## Interpreting PCA results
+
+>Q7. What stands out to you about this plot? Is it easy or difficult to understand? Why?
+
+We see the malignant are more spread out whereas the the benign are more clustered together, when observing PC1 vs PC2. However, the plot is very messy and difficult to understand.
+
+# make a biplot()
+```{r}
+biplot(wisc.pr)
+```
+
+# Scatter plot observations by component 1 and 2
+```{r}
+plot(wisc.pr$x[,1:2] , col = diagnosis , xlab = "PC1", ylab = "PC2")
+```
+
+>Q8. Generate a similar plot for principal components 1 and 3. What do you notice about these plots?
+
+```{r}
+plot(wisc.pr$x[,c(1,3)], col = diagnosis, 
+     xlab = "PC1", ylab = "PC3")
+```
+
+# use ggplot2
+
+```{r}
+# create a data.frame for ggplot
+df <- as.data.frame(wisc.pr$x)
+df$diagnosis <- diagnosis
+
+# Load the ggplot2 package
+library(ggplot2)
+
+# Make a scatter plot colored by diagnosis
+ggplot(df) + 
+  aes(PC1, PC2, col=diagnosis) + 
+  geom_point()
+```
+
+# Variance explained
+```{r}
+# Calculate variance of each component
+pr.var <- wisc.pr$sdev^2
+head(pr.var)
+```
+
+# Calculate variance explained by each PC by dividing by total variance
+```{r}
+# Variance explained by each principal component: pve
+pve <- pr.var / sum(pr.var)
+
+# Plot variance explained for each principal component
+plot(pve, xlab = "Principal Component", 
+     ylab = "Proportion of Variance Explained", 
+     ylim = c(0, 1), type = "o")
+```
+
+```{r}
+# Alt scree plot of the same data, note data driven y-axis
+barplot(pve, ylab = "Precent of Variance Explained",
+     names.arg=paste0("PC", 1:length(pve)), las=2, axes = FALSE)
+axis(2, at=pve, labels=round(pve,2)*100 )
+```
+
+## Communicating PCA results
+>Q9. For the first principal component, what is the component of the loading vector (i.e. wisc.pr$rotation[,1]) for the feature concave.points_mean?
+
+```{r}
+wisc.pr$rotation[,1]
+```
+The component of the loading vector for feature  concave.points_mean is -0.26085376 
+
+>Q10. What is the minimum number of principal components required to explain 80% of the variance of the data?
+
+```{r}
+summary(wisc.pr)
+```
+PC5 is the minimum number to reach 80%
+
+
+# Hierarchical Clustering
+
+First let's try clustering the raw data. 
+```{r}
+hc <- hclust(dist(wisc.data))
+plot(hc)
+```
+
+We can combine methods to be useful. We can take our PCA results and apply clustering to them.
+
+```{r}
+# Scale the wisc.data data using the "scale()" function
+data.scaled <- scale(wisc.data)
+```
+
+
+```{r}
+# Euclidean dist
+data.dist <- dist(data.scaled)
+```
+
+```{r}
+#create a hierarchical clustering method
+wisc.hclust <- hclust(data.dist, method = "ward.D2")
+```
+
+Results of Hierarchical clustering
+
+
+>Q11.  Using the plot() and abline() functions, what is the height at which the clustering model has 4 clusters?
+
+```{r}
+plot(wisc.hclust)
+abline(h=19.5, col="red", lty=2)
+```
+# Selecting number of clusters
+```{r}
+wisc.hclust.clusters <- cutree(wisc.hclust, k=4)
+
+table(wisc.hclust.clusters, diagnosis)
+```
+
+
+>Q14. How well does k-means separate the two diagnoses? How does it compare to your hclust results?
+
+```{r}
+pcdist <-dist(wisc.pr$x[,1:3])
+wisc.pr.hclust <- hclust(pcdist, method="ward.D2")
+plot(wisc.pr.hclust)
+```
+
+
+```{r}
+grps <- cutree(wisc.hclust, k=2)
+
+```
+```{r}
+plot(wisc.pr$x[,1:2], col=grps)
+```
+
+
